@@ -32,32 +32,32 @@
 
                 <sheet>
                     <group>
-                        <field name="name"/>
-                        <field name="employee_id"/>
-                        <field name="travel_type"/>
-                        <field name="destination"/>
+                        <group col="1">
+                            <field name="name"/>
+                            <field name="employee_id"/>
+                            <field name="travel_type"/>
+                            <field name="full_board" string="Full-Board Package"/>
+                            <field name="with_vehicle" string="Vehicle Provied by KS"/>
+                            <field name="destination"/>
+                            <field name="from_date"/>
+                            <field name="to_date"/>
+                            <field name="km_travelled"/>
+                            <field name="bill_amount"/>
+                            <field name="amount" readonly="1"/>
+                        </group>
+                        <group col="1">
+                            <field name="message_ids" widget="mail_thread"/>
+                            <field name="approval_log" readonly="1"/>
+                            <field name="amount_breakdown" readonly="1"/>
+                            <field name="bill_line_ids">
+                                <list>
+                                    <field name="bill_attachment_name"/>
+                                    <field name="bill_amount"/>
+                                    <field name="bill_attachment" widget="binary"/>
+                                </list>
+                            </field>
+                        </group>
                     </group>
-
-                    <group>
-                        <field name="from_date"/>
-                        <field name="to_date"/>
-                        <field name="with_vehicle"/>
-                    </group>
-
-                    <group>
-                        <field name="km_travelled"/>
-                        <field name="taxi_bill"/>
-                    </group>
-
-                    <group>
-                        <field name="full_board"/>
-                        <field name="first_last_day"/>
-                    </group>
-
-                    <group>
-                        <field name="amount" readonly="1"/>
-                    </group>
-
                 </sheet>
 
             </form>

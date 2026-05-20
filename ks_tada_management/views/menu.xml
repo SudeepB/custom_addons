@@ -10,9 +10,25 @@
         <field name="view_mode">list,form</field>
     </record>
 
+    <record id="action_tada_settings" model="ir.actions.act_window">
+        <field name="name">TADA Settings</field>
+        <field name="res_model">ks.tada.settings</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_tada_settings_form"/>
+        <field name="res_id" ref="ks_tada_settings_singleton"/>
+        <field name="target">current</field>
+    </record>
+
     <menuitem id="ks_tada_menu"
               name="Requests"
               parent="ks_tada_root"
               action="action_tada_request"/>
+
+    <menuitem id="ks_tada_settings_menu"
+              name="Settings"
+              parent="ks_tada_root"
+              action="action_tada_settings"
+              groups="base.group_system"
+              sequence="20"/>
 
 </odoo>

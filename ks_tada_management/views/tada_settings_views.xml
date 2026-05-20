@@ -1,0 +1,26 @@
+<odoo>
+
+    <!-- SETTINGS FORM VIEW -->
+    <record id="view_tada_settings_form" model="ir.ui.view">
+        <field name="name">tada.settings.form</field>
+        <field name="model">ks.tada.settings</field>
+        <field name="arch" type="xml">
+            <form string="TADA Rate Settings">
+                <sheet>
+                    <group string="Residential Travel">
+                        <field name="rate_residential_vehicle" string="Rate with Vehicle (per day)"/>
+                        <field name="rate_residential_no_vehicle" string="Rate without Vehicle (per day)"/>
+                        <field name="rate_first_last_day" string="First/Last Day Rate"/>
+                        <field name="rate_full_board_base" string="Full-Board Base Rate"/>
+                        <field name="full_board_percent" string="Full-Board Percentage (%)"/>
+                    </group>
+                    <group string="Other Travel">
+                        <field name="rate_stakeholder" string="Stakeholder/Government Rate (per day)"/>
+                        <field name="rate_local_per_km" string="Local Travel Rate (per km)"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>
