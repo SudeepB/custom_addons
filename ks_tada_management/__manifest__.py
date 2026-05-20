@@ -7,6 +7,8 @@
     "data": [
         "security/ir.model.access.csv",
         "data/sequence.xml",
+        "data/ks_tada_settings_data.xml",
+        "views/tada_settings_views.xml",
         "views/menu.xml",
         "views/tada_request_views.xml",
     ],

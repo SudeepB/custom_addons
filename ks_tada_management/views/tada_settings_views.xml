@@ -1,0 +1,49 @@
+<odoo>
+    <record id="view_tada_settings_form" model="ir.ui.view">
+        <field name="name">tada.settings.form</field>
+        <field name="model">ks.tada.settings</field>
+        <field name="arch" type="xml">
+            <form string="TADA Rate Settings" create="false" delete="false">
+                <sheet>
+                    <group>
+                        <field name="name" readonly="1"/>
+                    </group>
+
+                    <separator string="Internal Team Member TADA Rate" colspan="4"/>
+
+                    <group col="2">
+                        <group>
+                            <field name="rate_residential_vehicle"/>
+                        </group>
+                        <group>
+                            <field name="rate_residential_no_vehicle"/>
+                        </group>
+                        <group>
+                            <field name="rate_first_last_day"/>
+                        </group>
+                    </group>
+
+                    <separator string="Full Board Package" colspan="4"/>
+                    <group col="2">
+                        <group>
+                            <field name="rate_full_board_base"/>
+                        </group>
+                        <group>
+                            <field name="full_board_percent"/>
+                        </group>
+                    </group>
+
+                    <separator string="For Stakeholders and Government Officials" colspan="4"/>
+                    <group>
+                        <field name="rate_stakeholder"/>
+                    </group>
+
+                    <separator string="Local Travel" colspan="4"/>
+                    <group>
+                        <field name="rate_local_per_km"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

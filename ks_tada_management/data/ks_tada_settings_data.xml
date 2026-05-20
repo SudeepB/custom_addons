@@ -1,0 +1,12 @@
+<odoo>
+    <record id="ks_tada_settings_singleton" model="ks.tada.settings">
+        <field name="name">TADA Settings</field>
+        <field name="rate_residential_vehicle">1500</field>
+        <field name="rate_residential_no_vehicle">2500</field>
+        <field name="rate_first_last_day">2500</field>
+        <field name="rate_full_board_base">2500</field>
+        <field name="full_board_percent">20</field>
+        <field name="rate_stakeholder">1600</field>
+        <field name="rate_local_per_km">20</field>
+    </record>
+</odoo>
