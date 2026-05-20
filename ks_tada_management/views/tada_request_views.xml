@@ -1,6 +1,6 @@
 <odoo>
 
-    <!-- LIST VIEW (NOT TREE IN ODOO 19) -->
+    <!-- LIST VIEW -->
     <record id="view_tada_list" model="ir.ui.view">
         <field name="name">tada.list</field>
         <field name="model">ks.tada.request</field>
@@ -12,6 +12,25 @@
                 <field name="amount"/>
                 <field name="state"/>
             </list>
+        </field>
+    </record>
+
+    <!-- BILL FORM VIEW (popup for image preview) -->
+    <record id="view_tada_bill_form" model="ir.ui.view">
+        <field name="name">tada.bill.form</field>
+        <field name="model">ks.tada.bill</field>
+        <field name="arch" type="xml">
+            <form string="Bill Detail">
+                <sheet>
+                    <group>
+                        <field name="bill_attachment_name" string="File Name"/>
+                        <field name="bill_amount" string="Amount (NPR)"/>
+                    </group>
+                    <group string="Bill Image">
+                        <field name="bill_attachment" widget="image" string="" options="{'size': [600, 600]}"/>
+                    </group>
+                </sheet>
+            </form>
         </field>
     </record>
 
@@ -36,25 +55,39 @@
                             <field name="name"/>
                             <field name="employee_id"/>
                             <field name="travel_type"/>
-                            <field name="full_board" string="Full-Board Package"/>
-                            <field name="with_vehicle" string="Vehicle Provied by KS"/>
+                            <field name="full_board" string="Full-Board Package"
+                                   invisible="travel_type != 'residential'"/>
+                            <field name="with_vehicle" string="Vehicle Provided by KS"
+                                   invisible="travel_type != 'residential'"/>
                             <field name="destination"/>
                             <field name="from_date"/>
                             <field name="to_date"/>
-                            <field name="km_travelled"/>
-                            <field name="bill_amount"/>
+                            <field name="km_travelled"
+                                   invisible="travel_type != 'local'"/>
+                            <field name="bill_amount" readonly="1"/>
                             <field name="amount" readonly="1"/>
                         </group>
                         <group col="1">
                             <field name="message_ids" widget="mail_thread"/>
                             <field name="approval_log" readonly="1"/>
                             <field name="amount_breakdown" readonly="1"/>
-                            <field name="bill_line_ids">
-                                <list>
-                                    <field name="bill_attachment_name"/>
-                                    <field name="bill_amount"/>
-                                    <field name="bill_attachment" widget="binary"/>
+                            <field name="bill_line_ids" string="Bill Attachments">
+                                <list string="Bills">
+                                    <field name="bill_attachment_name" string="File Name"/>
+                                    <field name="bill_amount" string="Amount (NPR)"/>
+                                    <field name="bill_attachment" widget="image" string="Bill Image" options="{'size': [64, 64]}"/>
                                 </list>
+                                <form>
+                                    <sheet>
+                                        <group>
+                                            <field name="bill_attachment_name" string="File Name"/>
+                                            <field name="bill_amount" string="Amount (NPR)"/>
+                                        </group>
+                                        <group string="Bill Image">
+                                            <field name="bill_attachment" widget="image" string="" options="{'size': [600, 600]}"/>
+                                        </group>
+                                    </sheet>
+                                </form>
                             </field>
                         </group>
                     </group>

@@ -22,7 +22,11 @@ class TadaRequest(models.Model):
     with_vehicle = fields.Boolean()
     km_travelled = fields.Float()
 
-    bill_amount = fields.Float(string="Bill Amount")
+    bill_amount = fields.Float(
+        string="Bill Amount",
+        compute="_compute_bill_amount",
+        store=True,
+    )
     bill_line_ids = fields.One2many(
         "ks.tada.bill",
         "request_id",
@@ -62,6 +66,11 @@ class TadaRequest(models.Model):
             vals["name"] = self.env["ir.sequence"].next_by_code("ks.tada.request") or "New"
         return super().create(vals)
 
+    @api.depends("bill_line_ids.bill_amount")
+    def _compute_bill_amount(self):
+        for rec in self:
+            rec.bill_amount = sum(rec.bill_line_ids.mapped("bill_amount"))
+
     # -------------------------
     # Computation Logic
     # -------------------------
@@ -71,6 +80,7 @@ class TadaRequest(models.Model):
         "km_travelled",
         "full_board",
         "bill_amount",
+        "bill_line_ids.bill_amount",
         "from_date",
         "to_date",
     )
