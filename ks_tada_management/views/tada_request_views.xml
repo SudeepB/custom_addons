@@ -1,0 +1,67 @@
+<odoo>
+
+    <!-- LIST VIEW (NOT TREE IN ODOO 19) -->
+    <record id="view_tada_list" model="ir.ui.view">
+        <field name="name">tada.list</field>
+        <field name="model">ks.tada.request</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="travel_type"/>
+                <field name="amount"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- FORM VIEW -->
+    <record id="view_tada_form" model="ir.ui.view">
+        <field name="name">tada.form</field>
+        <field name="model">ks.tada.request</field>
+        <field name="arch" type="xml">
+            <form string="TADA Request">
+
+                <header>
+                    <button name="action_submit" type="object" string="Submit" class="btn-primary"/>
+                    <button name="action_approve" type="object" string="Approve" class="btn-success" groups="base.group_system"/>
+                    <button name="action_reject" type="object" string="Reject" class="btn-danger" groups="base.group_system"/>
+                    <button name="action_draft" type="object" string="Reset"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="employee_id"/>
+                        <field name="travel_type"/>
+                        <field name="destination"/>
+                    </group>
+
+                    <group>
+                        <field name="from_date"/>
+                        <field name="to_date"/>
+                        <field name="with_vehicle"/>
+                    </group>
+
+                    <group>
+                        <field name="km_travelled"/>
+                        <field name="taxi_bill"/>
+                    </group>
+
+                    <group>
+                        <field name="full_board"/>
+                        <field name="first_last_day"/>
+                    </group>
+
+                    <group>
+                        <field name="amount" readonly="1"/>
+                    </group>
+
+                </sheet>
+
+            </form>
+        </field>
+    </record>
+
+</odoo>
