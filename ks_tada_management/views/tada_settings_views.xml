@@ -5,19 +5,28 @@
         <field name="name">tada.settings.form</field>
         <field name="model">ks.tada.settings</field>
         <field name="arch" type="xml">
-            <form string="TADA Rate Settings">
+            <form string="TADA Rate Settings" create="0" duplicate="0" delete="0">
                 <sheet>
-                    <group string="Residential Travel">
-                        <field name="rate_residential_vehicle" string="Rate with Vehicle (per day)"/>
-                        <field name="rate_residential_no_vehicle" string="Rate without Vehicle (per day)"/>
-                        <field name="rate_first_last_day" string="First/Last Day Rate"/>
-                        <field name="rate_full_board_base" string="Full-Board Base Rate"/>
-                        <field name="full_board_percent" string="Full-Board Percentage (%)"/>
+
+                    <group string="Internal Team Members">
+                        <field name="rate_residential_vehicle"    string="Provided / Hired Vehicle Rate (NPR)"/>
+                        <field name="rate_residential_no_vehicle" string="Without Vehicle Rate (NPR)"/>
+                        <field name="rate_first_last_day"         string="First and Last Day Travel Rate (NPR)"/>
                     </group>
-                    <group string="Other Travel">
-                        <field name="rate_stakeholder" string="Stakeholder/Government Rate (per day)"/>
-                        <field name="rate_local_per_km" string="Local Travel Rate (per km)"/>
+
+                    <group string="Full-Board Package">
+                        <field name="rate_full_board_base"  string="Full-Board Base Amount (NPR)"/>
+                        <field name="full_board_percent"    string="TADA Percentage (%) — e.g. x% of Full Board Base Amount"/>
                     </group>
+
+                    <group string="Government and Stakeholders">
+                        <field name="rate_stakeholder" string="Stakeholders and Government Officials Rate (NPR)"/>
+                    </group>
+
+                    <group string="Local Travel">
+                        <field name="rate_local_per_km" string="Team Members with Vehicle — Rate per km (NPR)"/>
+                    </group>
+
                 </sheet>
             </form>
         </field>
