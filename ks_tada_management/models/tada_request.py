@@ -33,6 +33,20 @@ class TadaRequest(models.Model):
         string="Bills"
     )
 
+    itinerary_ids = fields.One2many(
+        "ks.tada.itinerary",
+        "request_id",
+        string="Travel Itinerary",
+    )
+    advance_ids = fields.One2many(
+        "ks.tada.advance",
+        "request_id",
+        string="Advance Requests",
+    )
+
+    submitted_by = fields.Many2one("res.users", string="Submitted By", readonly=True)
+    approved_by = fields.Many2one("res.users", string="Approved By", readonly=True)
+
     full_board = fields.Boolean()
     box_material = fields.Boolean()
 
@@ -81,6 +95,7 @@ class TadaRequest(models.Model):
         "full_board",
         "bill_amount",
         "bill_line_ids.bill_amount",
+        "bill_line_ids.bill_attachment_name",
         "from_date",
         "to_date",
     )
@@ -150,8 +165,17 @@ class TadaRequest(models.Model):
                 amount = stake_rate * days
                 breakdown_lines.append(f"Stakeholder rate ({days} day(s) x {stake_rate:.2f}): {amount:.2f}")
 
+            # Bill attachments detail
+            if rec.bill_line_ids:
+                breakdown_lines.append("─" * 30)
+                breakdown_lines.append("Bill Attachments:")
+                for line in rec.bill_line_ids:
+                    breakdown_lines.append(f"  {line.bill_attachment_name or 'Unnamed'}: NPR {line.bill_amount:.2f}")
+                breakdown_lines.append(f"  Bills Total: NPR {rec.bill_amount:.2f}")
+
             # Build breakdown text and final amount
-            breakdown_lines.append(f"Total: {amount:.2f}")
+            breakdown_lines.append("─" * 30)
+            breakdown_lines.append(f"Total Applied Amount: NPR {amount:.2f}")
             rec.amount = amount
             rec.amount_breakdown = "\n".join(breakdown_lines)
 
@@ -172,6 +196,7 @@ class TadaRequest(models.Model):
             if rec.state != "draft":
                 raise ValidationError("Only draft requests can be submitted.")
             rec.state = "submitted"
+            rec.submitted_by = self.env.user
             rec._append_approval_log("Submitted")
 
     def action_finance_approve(self):
@@ -184,6 +209,7 @@ class TadaRequest(models.Model):
             if rec.state != "submitted":
                 raise ValidationError("Only submitted requests can be approved.")
             rec.state = "approved"
+            rec.approved_by = self.env.user
             rec._append_approval_log("Approved")
 
     def action_reject(self):

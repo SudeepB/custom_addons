@@ -2,3 +2,5 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_ks_tada_request,ks.tada.request,model_ks_tada_request,,1,1,1,1
 access_ks_tada_settings,ks.tada.settings,model_ks_tada_settings,,1,1,1,1
 access_ks_tada_bill,ks.tada.bill,model_ks_tada_bill,,1,1,1,1
+access_ks_tada_itinerary,ks.tada.itinerary,model_ks_tada_itinerary,,1,1,1,1
+access_ks_tada_advance,ks.tada.advance,model_ks_tada_advance,,1,1,1,1

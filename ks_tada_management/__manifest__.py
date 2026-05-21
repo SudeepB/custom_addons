@@ -11,6 +11,7 @@
         "views/tada_settings_views.xml",
         "views/menu.xml",
         "views/tada_request_views.xml",
+        "report/tada_report.xml",
     ],
     "application": True,
     "installable": True,
