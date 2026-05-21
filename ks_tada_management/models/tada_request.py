@@ -18,6 +18,8 @@ class TadaRequest(models.Model):
     from_date = fields.Date()
     to_date = fields.Date()
     destination = fields.Char()
+    purpose_of_travel = fields.Char(string="Purpose of Travel")
+    project_title = fields.Char(string="Project / Programme")
 
     with_vehicle = fields.Boolean()
     km_travelled = fields.Float()
@@ -223,3 +225,9 @@ class TadaRequest(models.Model):
     def action_draft(self):
         for rec in self:
             rec.state = "draft"
+
+    def action_print_taf(self):
+        self.ensure_one()
+        return self.env.ref(
+            "ks_tada_management.action_report_tada_request"
+        ).report_action(self)
