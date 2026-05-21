@@ -9,6 +9,7 @@
         "data/sequence.xml",
         "data/ks_tada_settings_data.xml",
         "views/tada_settings_views.xml",
+        "views/tada_config_views.xml",
         "views/menu.xml",
         "views/tada_request_views.xml",
         "report/tada_report.xml",

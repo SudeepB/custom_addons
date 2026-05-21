@@ -21,6 +21,23 @@ class TadaRequest(models.Model):
     purpose_of_travel = fields.Char(string="Purpose of Travel")
     project_title = fields.Char(string="Project / Programme")
 
+    programme_id = fields.Many2one(
+        "ks.tada.programme",
+        string="Programme / Project",
+    )
+    # auto-fill purpose from programme when selected
+    @api.onchange("programme_id")
+    def _onchange_programme(self):
+        if self.programme_id:
+            self.purpose_of_travel = self.programme_id.purpose
+            self.project_title = self.programme_id.name
+
+    traveller_ids = fields.One2many(
+        "ks.tada.traveller",
+        "request_id",
+        string="Traveller Groups",
+    )
+
     with_vehicle = fields.Boolean()
     km_travelled = fields.Float()
 
@@ -63,6 +80,17 @@ class TadaRequest(models.Model):
     amount_breakdown = fields.Text(compute="_compute_amount", store=True)
     approval_log = fields.Text(string="Approval Log", readonly=True)
 
+    is_admin = fields.Boolean(
+        string="Is Admin",
+        compute="_compute_is_admin",
+    )
+
+    @api.depends_context("uid")
+    def _compute_is_admin(self):
+        is_admin = self.env.user.has_group("base.group_system")
+        for rec in self:
+            rec.is_admin = is_admin
+
     # -------------------------
     # Sequence
     # -------------------------
@@ -100,6 +128,9 @@ class TadaRequest(models.Model):
         "bill_line_ids.bill_attachment_name",
         "from_date",
         "to_date",
+        "traveller_ids.subtotal",
+        "traveller_ids.rate_rule_id",
+        "traveller_ids.count",
     )
     def _compute_amount(self):
         for rec in self:
@@ -166,6 +197,21 @@ class TadaRequest(models.Model):
                 stake_rate = settings.rate_stakeholder if settings else 1600.0
                 amount = stake_rate * days
                 breakdown_lines.append(f"Stakeholder rate ({days} day(s) x {stake_rate:.2f}): {amount:.2f}")
+
+            # Traveller groups breakdown
+            if rec.traveller_ids:
+                traveller_total = sum(rec.traveller_ids.mapped("subtotal"))
+                breakdown_lines.append("─" * 30)
+                breakdown_lines.append("Traveller Groups:")
+                for t in rec.traveller_ids:
+                    cat_label = dict(
+                        t._fields["member_category"].selection
+                    ).get(t.member_category, t.member_category or "")
+                    breakdown_lines.append(
+                        f"  [{cat_label}] {t.rate_rule_id.name} x{t.count} ({t.days}d): NPR {t.subtotal:.2f}"
+                    )
+                breakdown_lines.append(f"  Travellers Total: NPR {traveller_total:.2f}")
+                amount += traveller_total
 
             # Bill attachments detail
             if rec.bill_line_ids:

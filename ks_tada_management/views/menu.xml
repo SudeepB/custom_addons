@@ -4,14 +4,55 @@
               name="TADA Management"
               sequence="10"/>
 
+    <!-- Requests -->
     <record id="action_tada_request" model="ir.actions.act_window">
         <field name="name">TADA Requests</field>
         <field name="res_model">ks.tada.request</field>
         <field name="view_mode">list,form</field>
     </record>
 
+    <menuitem id="ks_tada_menu"
+              name="Requests"
+              parent="ks_tada_root"
+              action="action_tada_request"
+              sequence="10"/>
+
+    <!-- Configuration submenu (admin only) -->
+    <menuitem id="ks_tada_config_menu"
+              name="Configuration"
+              parent="ks_tada_root"
+              groups="base.group_system"
+              sequence="90"/>
+
+    <!-- Rate Rules -->
+    <record id="action_tada_rate_rules" model="ir.actions.act_window">
+        <field name="name">Rate Rules</field>
+        <field name="res_model">ks.tada.rate.rule</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="ks_tada_rate_rules_menu"
+              name="Rate Rules"
+              parent="ks_tada_config_menu"
+              action="action_tada_rate_rules"
+              sequence="10"/>
+
+    <!-- Programmes -->
+    <record id="action_tada_programmes" model="ir.actions.act_window">
+        <field name="name">Programmes / Projects</field>
+        <field name="res_model">ks.tada.programme</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="ks_tada_programmes_menu"
+              name="Programmes / Projects"
+              parent="ks_tada_config_menu"
+              action="action_tada_programmes"
+              sequence="20"/>
+
+    <!-- Legacy Settings (singleton) -->
     <record id="action_tada_settings" model="ir.actions.act_window">
-        <field name="name">TADA Settings</field>
+        <field name="name">Legacy Rate Settings</field>
         <field name="res_model">ks.tada.settings</field>
         <field name="view_mode">form</field>
         <field name="view_id" ref="view_tada_settings_form"/>
@@ -19,16 +60,11 @@
         <field name="target">current</field>
     </record>
 
-    <menuitem id="ks_tada_menu"
-              name="Requests"
-              parent="ks_tada_root"
-              action="action_tada_request"/>
-
     <menuitem id="ks_tada_settings_menu"
-              name="Settings"
-              parent="ks_tada_root"
+              name="Legacy Rate Settings"
+              parent="ks_tada_config_menu"
               action="action_tada_settings"
               groups="base.group_system"
-              sequence="20"/>
+              sequence="30"/>
 
 </odoo>

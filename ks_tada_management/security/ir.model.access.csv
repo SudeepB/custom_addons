@@ -4,3 +4,6 @@ access_ks_tada_settings,ks.tada.settings,model_ks_tada_settings,,1,1,1,1
 access_ks_tada_bill,ks.tada.bill,model_ks_tada_bill,,1,1,1,1
 access_ks_tada_itinerary,ks.tada.itinerary,model_ks_tada_itinerary,,1,1,1,1
 access_ks_tada_advance,ks.tada.advance,model_ks_tada_advance,,1,1,1,1
+access_ks_tada_rate_rule,ks.tada.rate.rule,model_ks_tada_rate_rule,,1,1,1,1
+access_ks_tada_programme,ks.tada.programme,model_ks_tada_programme,,1,1,1,1
+access_ks_tada_traveller,ks.tada.traveller,model_ks_tada_traveller,,1,1,1,1
