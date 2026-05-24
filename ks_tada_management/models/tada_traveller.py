@@ -1,19 +1,4 @@
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError
-
-
-# Maximum allowed members per member category
-CATEGORY_LIMITS = {
-    "internal": 5,
-    "government": 2,
-    "other": 0,   # 0 = no limit
-}
-
-CATEGORY_LABELS = {
-    "internal": "Internal Team Member",
-    "government": "Government Official",
-    "other": "Other",
-}
 
 
 class TadaTraveller(models.Model):
@@ -27,17 +12,12 @@ class TadaTraveller(models.Model):
         ondelete="cascade",
     )
 
-    # ── Member category with limits ─────────────────────────────────────────
+    # ── Member category ─────────────────────────────────────────────────────
     member_category = fields.Selection([
-        ("internal", "Internal Team Member (max 5)"),
-        ("government", "Government Official (max 2)"),
+        ("internal", "Internal Team Member"),
+        ("government", "Government Official"),
         ("other", "Other"),
     ], string="Member Category", default="internal", required=True)
-
-    max_allowed = fields.Integer(
-        string="Max Allowed",
-        compute="_compute_max_allowed",
-    )
 
     rate_rule_id = fields.Many2one(
         "ks.tada.rate.rule",
@@ -58,22 +38,6 @@ class TadaTraveller(models.Model):
         store=True,
     )
     notes = fields.Char(string="Remarks")
-
-    @api.depends("member_category")
-    def _compute_max_allowed(self):
-        for rec in self:
-            rec.max_allowed = CATEGORY_LIMITS.get(rec.member_category, 0)
-
-    @api.constrains("member_category", "count")
-    def _check_member_limit(self):
-        for rec in self:
-            limit = CATEGORY_LIMITS.get(rec.member_category, 0)
-            if limit and rec.count > limit:
-                label = CATEGORY_LABELS.get(rec.member_category, rec.member_category)
-                raise ValidationError(
-                    f"'{label}' category allows a maximum of {limit} member(s). "
-                    f"You entered {rec.count}."
-                )
 
     @api.depends("rate_rule_id", "count", "days", "km")
     def _compute_subtotal(self):

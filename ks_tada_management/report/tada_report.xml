@@ -1,6 +1,6 @@
 <odoo>
 
-    <!-- Report Action — bound to model so it appears in Print menu -->
+    <!-- Report Action -->
     <record id="action_report_tada_request" model="ir.actions.report">
         <field name="name">Travel Authorization Form</field>
         <field name="model">ks.tada.request</field>
@@ -15,6 +15,15 @@
     <template id="report_tada_request_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
+                <!--
+                    print_mode is passed via report context (with_context).
+                    env.context is available in QWeb as a Python dict.
+                    Default to 'both' when printing directly from Print menu.
+                -->
+                <t t-set="mode"         t-value="request.env.context.get('print_mode', 'both')"/>
+                <t t-set="show_claim"   t-value="mode in ('claim', 'both')"/>
+                <t t-set="show_advance" t-value="mode in ('advance', 'both')"/>
+
                 <t t-call="web.external_layout">
                     <div class="page" style="font-family: Arial, sans-serif; font-size: 11pt; color: #000;">
 
@@ -24,7 +33,9 @@
                                 Karkhana Samuha
                             </h2>
                             <h3 style="margin:2px 0 0 0; font-size:13pt; font-weight:bold;">
-                                Travel Authorization Form
+                                <t t-if="mode == 'advance'">Advance Request Form</t>
+                                <t t-elif="mode == 'claim'">Travel Claim Form</t>
+                                <t t-else="">Travel Authorization Form</t>
                             </h3>
                         </div>
 
@@ -80,7 +91,7 @@
                                 </td>
                                 <td style="width:15%; padding:4px 6px;"><strong>Project / Programme</strong></td>
                                 <td style="width:30%; padding:4px 6px; border-bottom:1px solid #000;">
-                                    <t t-esc="o.project_title or '—'"/>
+                                    <t t-esc="o.project_title or (o.programme_id.name if o.programme_id else '—')"/>
                                 </td>
                             </tr>
                             <tr>
@@ -98,42 +109,86 @@
                                 <td style="padding:4px 6px; border-bottom:1px solid #000;">
                                     <t t-esc="o.destination or '—'"/>
                                 </td>
-                                <td style="padding:4px 6px;"><strong>Travel Type</strong></td>
+                                <td style="padding:4px 6px;"><strong>Primary Travel Type</strong></td>
                                 <td style="padding:4px 6px; border-bottom:1px solid #000;">
-                                    <t t-esc="dict(o._fields['travel_type'].selection).get(o.travel_type, '—')"/>
+                                    <t t-esc="dict(o._fields['travel_type'].selection).get(o.travel_type, '—') if o.travel_type else '—'"/>
                                 </td>
-                            </tr>
-                            <tr t-if="o.travel_type == 'residential'">
-                                <td style="padding:4px 6px;"><strong>Full-Board Package</strong></td>
-                                <td style="padding:4px 6px; border-bottom:1px solid #000;">
-                                    <t t-esc="'Yes' if o.full_board else 'No'"/>
-                                </td>
-                                <td style="padding:4px 6px;"><strong>Vehicle Provided by KS</strong></td>
-                                <td style="padding:4px 6px; border-bottom:1px solid #000;">
-                                    <t t-esc="'Yes' if o.with_vehicle else 'No'"/>
-                                </td>
-                            </tr>
-                            <tr t-if="o.travel_type == 'local'">
-                                <td style="padding:4px 6px;"><strong>KM Travelled</strong></td>
-                                <td style="padding:4px 6px; border-bottom:1px solid #000;">
-                                    <t t-esc="o.km_travelled"/>
-                                </td>
-                                <td></td><td></td>
                             </tr>
                         </table>
 
-                        <!-- ── TRAVEL ITINERARY ── -->
+                        <!-- ── TRAVEL LINES (multi-type) ── -->
+                        <t t-if="o.travel_line_ids">
+                            <div style="background:#c8e6c9; padding:4px 8px; font-weight:bold; font-size:11pt; margin-bottom:4px;">
+                                Travel Details
+                            </div>
+                            <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
+                                <thead>
+                                    <tr style="background:#c8e6c9;">
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Programme / Project</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Travel Type</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:center;">People</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">From Date</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">To Date</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:right;">Amount (NPR)</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Breakdown</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="o.travel_line_ids" t-as="tl">
+                                        <tr>
+                                            <td style="border:1px solid #000; padding:4px 6px;">
+                                                <t t-esc="tl.programme_id.name if tl.programme_id else '—'"/>
+                                            </td>
+                                            <td style="border:1px solid #000; padding:4px 6px;">
+                                                <t t-esc="dict(tl._fields['travel_type'].selection).get(tl.travel_type, '—')"/>
+                                            </td>
+                                            <td style="border:1px solid #000; padding:4px 6px; text-align:center;">
+                                                <t t-esc="tl.num_people"/>
+                                            </td>
+                                            <td style="border:1px solid #000; padding:4px 6px;">
+                                                <t t-esc="tl.from_date.strftime('%d/%m/%Y') if tl.from_date else '—'"/>
+                                            </td>
+                                            <td style="border:1px solid #000; padding:4px 6px;">
+                                                <t t-esc="tl.to_date.strftime('%d/%m/%Y') if tl.to_date else '—'"/>
+                                            </td>
+                                            <td style="border:1px solid #000; padding:4px 6px; text-align:right;">
+                                                <t t-esc="'%.2f' % tl.line_amount"/>
+                                            </td>
+                                            <td style="border:1px solid #000; padding:4px 6px; font-size:9pt;">
+                                                <t t-esc="tl.breakdown or ''"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                                <tfoot>
+                                    <tr style="font-weight:bold; background:#f1f8e9;">
+                                        <td colspan="5" style="border:1px solid #000; padding:4px 6px; text-align:right;">
+                                            Travel Lines Total
+                                        </td>
+                                        <td style="border:1px solid #000; padding:4px 6px; text-align:right;">
+                                            <t t-esc="'%.2f' % sum(o.travel_line_ids.mapped('line_amount'))"/>
+                                        </td>
+                                        <td style="border:1px solid #000; padding:4px 6px;"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </t>
+
+                        <!-- ── ITINERARY / SCHEDULE ── -->
                         <t t-if="o.itinerary_ids">
                             <div style="background:#c8e6c9; padding:4px 8px; font-weight:bold; font-size:11pt; margin-bottom:4px;">
-                                Travel Itinerary
+                                Itinerary / Programme Schedule
                             </div>
                             <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
                                 <thead>
                                     <tr style="background:#c8e6c9;">
                                         <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Date</th>
-                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Travel From</th>
-                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Travel To</th>
-                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Mode of Transportation</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Programme / Project</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Activity Type</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Location / Venue</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">From</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">To</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Mode</th>
                                         <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Remarks</th>
                                     </tr>
                                 </thead>
@@ -141,8 +196,15 @@
                                     <t t-foreach="o.itinerary_ids" t-as="itin">
                                         <tr>
                                             <td style="border:1px solid #000; padding:4px 6px;">
-                                                <t t-esc="itin.date.strftime('%m/%d/%Y') if itin.date else '—'"/>
+                                                <t t-esc="itin.date.strftime('%d/%m/%Y') if itin.date else '—'"/>
                                             </td>
+                                            <td style="border:1px solid #000; padding:4px 6px;">
+                                                <t t-esc="itin.programme_id.name if itin.programme_id else '—'"/>
+                                            </td>
+                                            <td style="border:1px solid #000; padding:4px 6px;">
+                                                <t t-esc="dict(itin._fields['activity_type'].selection).get(itin.activity_type, '—')"/>
+                                            </td>
+                                            <td style="border:1px solid #000; padding:4px 6px;"><t t-esc="itin.location or ''"/></td>
                                             <td style="border:1px solid #000; padding:4px 6px;"><t t-esc="itin.travel_from or ''"/></td>
                                             <td style="border:1px solid #000; padding:4px 6px;"><t t-esc="itin.travel_to or ''"/></td>
                                             <td style="border:1px solid #000; padding:4px 6px;"><t t-esc="itin.mode_of_transport or ''"/></td>
@@ -154,66 +216,122 @@
                         </t>
 
                         <!-- ── ADVANCE REQUEST ── -->
-                        <t t-if="o.advance_ids">
+                        <t t-if="show_advance and o.advance_ids">
                             <div style="background:#c8e6c9; padding:4px 8px; font-weight:bold; font-size:11pt; margin-bottom:4px;">
                                 Advance Request
                             </div>
                             <table style="width:100%; border-collapse:collapse; margin-bottom:4px;">
                                 <thead>
                                     <tr style="background:#c8e6c9;">
-                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Activity Code</th>
-                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Budget Line Item</th>
-                                        <th style="border:1px solid #000; padding:4px 6px; text-align:right;">Advance (A)</th>
-                                        <th style="border:1px solid #000; padding:4px 6px; text-align:right;">Settled Expenses</th>
-                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Remarks</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Date</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Programme / Project</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Member Category</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:center;">Members</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Budget Line</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:right;">Advance (NPR)</th>
+                                        <th style="border:1px solid #000; padding:4px 6px; text-align:left;">Remarks / Calculation</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <t t-foreach="o.advance_ids" t-as="adv">
                                         <tr>
-                                            <td style="border:1px solid #000; padding:4px 6px;"><t t-esc="adv.activity_code or ''"/></td>
-                                            <td style="border:1px solid #000; padding:4px 6px;"><t t-esc="adv.budget_line_item or ''"/></td>
-                                            <td style="border:1px solid #000; padding:4px 6px; text-align:right;"><t t-esc="'%.2f' % adv.advance_amount"/></td>
-                                            <td style="border:1px solid #000; padding:4px 6px; text-align:right;"><t t-esc="'%.2f' % adv.settled_expenses"/></td>
-                                            <td style="border:1px solid #000; padding:4px 6px;"><t t-esc="adv.remarks or ''"/></td>
+                                            <td style="border:1px solid #000; padding:4px 6px;">
+                                                <t t-esc="adv.date.strftime('%d/%m/%Y') if adv.date else '—'"/>
+                                            </td>
+                                            <td style="border:1px solid #000; padding:4px 6px;">
+                                                <t t-esc="adv.programme_id.name if adv.programme_id else '—'"/>
+                                            </td>
+                                            <td style="border:1px solid #000; padding:4px 6px;">
+                                                <t t-esc="dict(adv._fields['member_category'].selection).get(adv.member_category, '—')"/>
+                                            </td>
+                                            <td style="border:1px solid #000; padding:4px 6px; text-align:center;">
+                                                <t t-esc="adv.member_count"/>
+                                            </td>
+                                            <td style="border:1px solid #000; padding:4px 6px;">
+                                                <t t-esc="adv.budget_line_item or ''"/>
+                                            </td>
+                                            <td style="border:1px solid #000; padding:4px 6px; text-align:right;">
+                                                <t t-esc="'%.2f' % adv.advance_amount"/>
+                                            </td>
+                                            <td style="border:1px solid #000; padding:4px 6px; white-space:pre-wrap; font-size:9pt;">
+                                                <t t-esc="adv.remarks or ''"/>
+                                            </td>
                                         </tr>
                                     </t>
                                 </tbody>
                                 <tfoot>
-                                    <tr style="font-weight:bold;">
-                                        <td colspan="2" style="border:1px solid #000; padding:4px 6px; text-align:right;">Total Advance</td>
+                                    <tr style="font-weight:bold; background:#f1f8e9;">
+                                        <td colspan="5" style="border:1px solid #000; padding:4px 6px; text-align:right;">
+                                            Total Advance Requested
+                                        </td>
                                         <td style="border:1px solid #000; padding:4px 6px; text-align:right;">
                                             <t t-esc="'%.2f' % sum(o.advance_ids.mapped('advance_amount'))"/>
                                         </td>
-                                        <td style="border:1px solid #000; padding:4px 6px; text-align:right;">
-                                            <t t-esc="'%.2f' % sum(o.advance_ids.mapped('settled_expenses'))"/>
-                                        </td>
-                                        <td style="border:1px solid #000; padding:4px 6px; text-align:right;">
-                                            <t t-esc="'%.2f' % (sum(o.advance_ids.mapped('advance_amount')) - sum(o.advance_ids.mapped('settled_expenses')))"/>
-                                        </td>
+                                        <td style="border:1px solid #000; padding:4px 6px;"></td>
                                     </tr>
                                 </tfoot>
                             </table>
-                            <!-- Balance label -->
-                            <div style="text-align:right; font-size:9pt; margin-bottom:10px; padding-right:2px;">
-                                ← Balance (Advance − Settled)
-                            </div>
+                            <div style="margin-bottom:10px;"/>
                         </t>
 
-                        <!-- ── AMOUNT SUMMARY ── -->
-                        <div style="background:#c8e6c9; padding:4px 8px; font-weight:bold; font-size:11pt; margin-bottom:4px;">
-                            Amount Summary
-                        </div>
-                        <table style="width:50%; border-collapse:collapse; margin-bottom:14px;">
-                            <tr>
-                                <td style="padding:4px 6px;"><strong>Total Bill Amount (NPR)</strong></td>
-                                <td style="padding:4px 6px; text-align:right;"><t t-esc="'%.2f' % o.bill_amount"/></td>
-                            </tr>
-                            <tr style="font-weight:bold; border-top:1.5px solid #000;">
-                                <td style="padding:4px 6px;">Total Applied Amount (NPR)</td>
-                                <td style="padding:4px 6px; text-align:right;"><t t-esc="'%.2f' % o.amount"/></td>
-                            </tr>
-                        </table>
+                        <!-- ── AMOUNT SUMMARY (claim) ── -->
+                        <t t-if="show_claim">
+                            <t t-if="o.bill_line_ids">
+                                <div style="background:#c8e6c9; padding:4px 8px; font-weight:bold; font-size:11pt; margin-bottom:4px;">
+                                    Bill Attachments
+                                </div>
+                                <table style="width:100%; border-collapse:collapse; margin-bottom:4px;">
+                                    <thead>
+                                        <tr style="background:#c8e6c9;">
+                                            <th style="border:1px solid #000; padding:4px 6px; text-align:left;">File Name</th>
+                                            <th style="border:1px solid #000; padding:4px 6px; text-align:right;">Amount (NPR)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="o.bill_line_ids" t-as="bl">
+                                            <tr>
+                                                <td style="border:1px solid #000; padding:4px 6px;">
+                                                    <t t-esc="bl.bill_attachment_name or '—'"/>
+                                                </td>
+                                                <td style="border:1px solid #000; padding:4px 6px; text-align:right;">
+                                                    <t t-esc="'%.2f' % bl.bill_amount"/>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr style="font-weight:bold; background:#f1f8e9;">
+                                            <td style="border:1px solid #000; padding:4px 6px; text-align:right;">Total Bill Amount</td>
+                                            <td style="border:1px solid #000; padding:4px 6px; text-align:right;">
+                                                <t t-esc="'%.2f' % o.bill_amount"/>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                                <div style="margin-bottom:8px;"/>
+                            </t>
+
+                            <div style="background:#c8e6c9; padding:4px 8px; font-weight:bold; font-size:11pt; margin-bottom:4px;">
+                                Amount Summary
+                            </div>
+                            <table style="width:55%; border-collapse:collapse; margin-bottom:6px;">
+                                <tr t-if="o.bill_amount">
+                                    <td style="padding:4px 6px;"><strong>Total Bill Amount (NPR)</strong></td>
+                                    <td style="padding:4px 6px; text-align:right;"><t t-esc="'%.2f' % o.bill_amount"/></td>
+                                </tr>
+                                <tr t-if="o.travel_line_ids">
+                                    <td style="padding:4px 6px;"><strong>Travel Lines Total (NPR)</strong></td>
+                                    <td style="padding:4px 6px; text-align:right;"><t t-esc="'%.2f' % o.travel_lines_amount"/></td>
+                                </tr>
+                                <tr style="font-weight:bold; border-top:1.5px solid #000;">
+                                    <td style="padding:4px 6px;">Total Applied Amount (NPR)</td>
+                                    <td style="padding:4px 6px; text-align:right;"><t t-esc="'%.2f' % o.amount"/></td>
+                                </tr>
+                            </table>
+                            <t t-if="o.amount_breakdown">
+                                <pre style="font-size:9pt; background:#f9f9f9; border:1px solid #ddd; padding:6px; margin-bottom:10px; white-space:pre-wrap;"><t t-esc="o.amount_breakdown"/></pre>
+                            </t>
+                        </t>
 
                         <!-- ── SIGNATURES ── -->
                         <table style="width:100%; margin-top:30px;">

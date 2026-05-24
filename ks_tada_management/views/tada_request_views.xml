@@ -8,14 +8,16 @@
             <list>
                 <field name="name"/>
                 <field name="employee_id"/>
-                <field name="travel_type"/>
-                <field name="amount"/>
+                <field name="from_date"/>
+                <field name="to_date"/>
+                <field name="amount" string="Applied Amount (NPR)"/>
+                <field name="total_advance" string="Advance (NPR)"/>
                 <field name="state"/>
             </list>
         </field>
     </record>
 
-    <!-- BILL FORM VIEW (popup for image preview) -->
+    <!-- BILL FORM VIEW -->
     <record id="view_tada_bill_form" model="ir.ui.view">
         <field name="name">tada.bill.form</field>
         <field name="model">ks.tada.bill</field>
@@ -34,7 +36,7 @@
         </field>
     </record>
 
-    <!-- FORM VIEW -->
+    <!-- MAIN FORM VIEW -->
     <record id="view_tada_form" model="ir.ui.view">
         <field name="name">tada.form</field>
         <field name="model">ks.tada.request</field>
@@ -42,68 +44,56 @@
             <form string="TADA Request">
 
                 <header>
-                    <!-- Submit: only visible in draft state -->
                     <button name="action_submit"
                             type="object"
                             string="Submit"
                             class="btn-primary"
                             invisible="state != 'draft'"/>
-
-                    <!-- Admin-only action buttons: hidden once in draft, restricted to admin -->
                     <button name="action_approve"
                             type="object"
                             string="Approve"
                             class="btn-success"
                             groups="base.group_system"
                             invisible="state != 'submitted'"/>
-
                     <button name="action_reject"
                             type="object"
                             string="Reject"
                             class="btn-danger"
                             groups="base.group_system"
                             invisible="state not in ('submitted', 'approved')"/>
-
                     <button name="action_draft"
                             type="object"
                             string="Reset to Draft"
                             groups="base.group_system"
                             invisible="state == 'draft'"/>
-
                     <button name="action_print_taf"
                             type="object"
                             string="🖨 Print TAF"
                             class="btn-secondary"/>
-
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,submitted,approved"/>
-                    <!-- helper field used for button visibility logic -->
                     <field name="is_admin" invisible="1"/>
                 </header>
 
                 <sheet>
+                    <!-- Employee info banner (auto-filled from logged-in user) -->
                     <group>
-                        <group col="1">
+                        <group string="Request Details" col="1">
                             <field name="name"/>
                             <field name="employee_id"/>
+                            <!-- Readonly info pulled from employee record -->
+                            <field name="employee_designation" readonly="1" string="Designation"/>
+                            <field name="employee_department" readonly="1" string="Department / Team"/>
                             <field name="programme_id"/>
-                            <field name="travel_type"/>
-                            <field name="full_board" string="Full-Board Package"
-                                   invisible="travel_type != 'residential'"/>
-                            <field name="with_vehicle" string="Vehicle Provided by KS"
-                                   invisible="travel_type != 'residential'"/>
                             <field name="destination"/>
                             <field name="purpose_of_travel"/>
                             <field name="project_title"/>
                             <field name="from_date"/>
                             <field name="to_date"/>
-                            <field name="km_travelled"
-                                   invisible="travel_type != 'local'"/>
                         </group>
-                        <group col="1">
-                            <field name="bill_amount" readonly="1" string="Total Bill Amount (NPR)"/>
+                        <group string="Summary" col="1">
                             <field name="amount" readonly="1" string="Total Applied Amount (NPR)"/>
-                            <field name="amount_breakdown" readonly="1" string="Breakdown"/>
+                            <field name="total_advance" readonly="1" string="Total Advance Requested (NPR)"/>
                             <field name="submitted_by" readonly="1"/>
                             <field name="approved_by" readonly="1"/>
                         </group>
@@ -111,31 +101,67 @@
 
                     <notebook>
 
-                        <!-- Tab 1: Traveller Groups -->
-                        <page string="Traveller Groups" name="travellers">
-                            <p class="text-muted" style="margin-bottom:8px;">
-                                Member limits: <strong>Internal Team Member — max 5</strong> &amp;
-                                <strong>Government Official — max 2</strong>.
-                                The system will validate on save.
+                        <!-- Tab 1: Travel Details (multiple programme/project lines) -->
+                        <page string="Travel Details" name="travel_lines">
+                            <p class="text-muted" style="margin-bottom:6px;">
+                                Add one line per programme / project or travel segment.
+                                Amount is calculated automatically per line.
                             </p>
-                            <field name="traveller_ids" string="">
+                            <field name="travel_line_ids">
                                 <list editable="bottom">
-                                    <field name="member_category" string="Member Category"/>
-                                    <field name="max_allowed" string="Max Allowed" readonly="1" optional="show"/>
-                                    <field name="rate_rule_id" string="Rate Rule"/>
-                                    <field name="travel_category" string="Travel Category" readonly="1"/>
-                                    <field name="count" string="No. of People"/>
-                                    <field name="days" string="Days"/>
-                                    <field name="km" string="KM" optional="show"/>
-                                    <field name="subtotal" string="Subtotal (NPR)" readonly="1"/>
-                                    <field name="notes" string="Remarks"/>
+                                    <field name="programme_id" string="Programme / Project"/>
+                                    <field name="travel_type" string="Travel Type"/>
+                                    <field name="num_people" string="No. of People"/>
+                                    <field name="from_date" string="From Date"/>
+                                    <field name="to_date" string="To Date"/>
+                                    <field name="full_board" string="Full-Board"
+                                           optional="show"/>
+                                    <field name="with_vehicle" string="With Vehicle"
+                                           optional="show"/>
+                                    <field name="km_travelled" string="KM"
+                                           optional="show"/>
+                                    <field name="line_amount" string="Amount (NPR)" readonly="1"/>
+                                    <field name="breakdown" string="Breakdown" readonly="1"/>
                                 </list>
+                                <form>
+                                    <sheet>
+                                        <group string="Programme / Travel Segment">
+                                            <field name="programme_id" string="Programme / Project"/>
+                                            <field name="travel_type" string="Travel Type"/>
+                                            <field name="num_people" string="No. of People"/>
+                                            <field name="from_date" string="From Date"/>
+                                            <field name="to_date" string="To Date"/>
+                                        </group>
+                                        <group string="Options">
+                                            <field name="full_board" string="Full-Board Package"/>
+                                            <field name="with_vehicle" string="With Vehicle"/>
+                                            <field name="km_travelled" string="KM Travelled"/>
+                                        </group>
+                                        <group string="Calculated">
+                                            <field name="line_amount" string="Amount (NPR)" readonly="1"/>
+                                            <field name="breakdown" string="Breakdown" readonly="1"/>
+                                        </group>
+                                    </sheet>
+                                </form>
                             </field>
                         </page>
 
-                        <!-- Tab 2: Bill Attachments -->
+                        <!-- Tab 2: Travel Amount Calculation -->
+                        <page string="Travel Amount Calculation" name="travel_calc">
+                            <group string="Summary">
+                                <field name="travel_lines_amount" readonly="1" string="Travel Lines Total (NPR)"/>
+                                <field name="bill_amount" readonly="1" string="Total Bill Amount (NPR)"/>
+                                <field name="amount" readonly="1" string="Total Applied Amount (NPR)"/>
+                                <field name="total_advance" readonly="1" string="Total Advance Requested (NPR)"/>
+                            </group>
+                            <group string="Breakdown">
+                                <field name="amount_breakdown" readonly="1" nolabel="1"/>
+                            </group>
+                        </page>
+
+                        <!-- Tab 3: Bill Attachments (with total summary) -->
                         <page string="Bill Attachments" name="bills">
-                            <field name="bill_line_ids" string="">
+                            <field name="bill_line_ids">
                                 <list string="Bills">
                                     <field name="bill_attachment_name" string="File Name"/>
                                     <field name="bill_amount" string="Amount (NPR)"/>
@@ -153,66 +179,73 @@
                                     </sheet>
                                 </form>
                             </field>
+                            <!-- Total row below the list -->
+                            <group>
+                                <group/>
+                                <group>
+                                    <field name="bill_amount" readonly="1" string="Total Bill Amount (NPR)"/>
+                                </group>
+                            </group>
                         </page>
 
-                        <!-- Tab 3: Travel Itinerary -->
-                        <page string="Travel Itinerary" name="itinerary">
-                            <field name="itinerary_ids" string="">
+                        <!-- Tab 4: Itinerary / Schedule -->
+                        <page string="Itinerary / Schedule" name="itinerary">
+                            <field name="itinerary_ids">
                                 <list editable="bottom">
                                     <field name="date" string="Date"/>
-                                    <field name="travel_from" string="Travel From"/>
-                                    <field name="travel_to" string="Travel To"/>
-                                    <field name="mode_of_transport" string="Mode of Transportation"/>
+                                    <field name="programme_id" string="Programme / Project"/>
+                                    <field name="activity_type" string="Activity Type"/>
+                                    <field name="location" string="Location / Venue"/>
+                                    <field name="travel_from" string="From" optional="show"/>
+                                    <field name="travel_to" string="To" optional="show"/>
+                                    <field name="mode_of_transport" string="Mode of Transport" optional="show"/>
                                     <field name="remarks" string="Remarks"/>
                                 </list>
                             </field>
                         </page>
 
-                        <!-- Tab 4: Advance Request (per-day with member calculation) -->
+                        <!-- Tab 5: Advance Request -->
                         <page string="Advance Request" name="advance">
-                            <p class="text-muted" style="margin-bottom:8px;">
-                                Add one line per day / activity. Select the member category, count,
-                                rate rule and days — the advance amount and remarks are calculated automatically.
-                            </p>
-                            <field name="advance_ids" string="">
+                            <field name="advance_ids">
                                 <list editable="bottom">
                                     <field name="date" string="Date"/>
+                                    <field name="programme_id" string="Programme / Project"/>
                                     <field name="member_category" string="Member Category"/>
                                     <field name="member_count" string="No. of Members"/>
-                                    <field name="rate_rule_id" string="Rate Rule"/>
-                                    <field name="days" string="Days"/>
-                                    <field name="km" string="KM" optional="show"/>
-                                    <field name="activity_code" string="Activity Code" optional="show"/>
                                     <field name="budget_line_item" string="Budget Line Item" optional="show"/>
-                                    <field name="advance_amount" string="Advance (NPR)" readonly="1"/>
-                                    <field name="settled_expenses" string="Settled Expenses"/>
-                                    <field name="remarks" string="Calculation Remarks" readonly="1"/>
+                                    <field name="advance_amount" string="Advance (NPR)"/>
+                                    <field name="settled_expenses" string="Settled Expenses" optional="show"/>
+                                    <field name="remarks" string="Remarks / Calculation"/>
                                 </list>
                                 <form>
                                     <sheet>
-                                        <group string="Day / Activity Details">
+                                        <group string="Activity Details">
                                             <field name="date" string="Date"/>
+                                            <field name="programme_id" string="Programme / Project"/>
                                             <field name="member_category" string="Member Category"/>
                                             <field name="member_count" string="No. of Members"/>
-                                            <field name="rate_rule_id" string="Rate Rule"/>
-                                            <field name="days" string="Days"/>
-                                            <field name="km" string="KM (if applicable)"/>
+                                            <field name="budget_line_item" string="Budget Line Item"/>
                                         </group>
                                         <group string="Financial">
-                                            <field name="activity_code" string="Activity Code"/>
-                                            <field name="budget_line_item" string="Budget Line Item"/>
-                                            <field name="advance_amount" string="Advance (NPR)" readonly="1"/>
+                                            <field name="advance_amount" string="Advance (NPR)"/>
                                             <field name="settled_expenses" string="Settled Expenses"/>
                                         </group>
-                                        <group string="Calculation Remarks">
-                                            <field name="remarks" readonly="1" nolabel="1"/>
+                                        <group string="Remarks / Calculation">
+                                            <field name="remarks" nolabel="1" rows="10"/>
                                         </group>
                                     </sheet>
                                 </form>
                             </field>
+                            <!-- Advance total row -->
+                            <group>
+                                <group/>
+                                <group>
+                                    <field name="total_advance" readonly="1" string="Total Advance Requested (NPR)"/>
+                                </group>
+                            </group>
                         </page>
 
-                        <!-- Tab 5: Approval Log -->
+                        <!-- Tab 6: Approval Log -->
                         <page string="Approval Log" name="log">
                             <field name="approval_log" readonly="1" string=""/>
                         </page>

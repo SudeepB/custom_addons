@@ -1,6 +1,7 @@
 from odoo import models, fields, api
 from odoo.exceptions import AccessError, ValidationError
 
+
 class TadaRequest(models.Model):
     _name = "ks.tada.request"
     _description = "TADA Request"
@@ -9,11 +10,42 @@ class TadaRequest(models.Model):
     name = fields.Char(default="New", readonly=True)
     employee_id = fields.Many2one("hr.employee", required=True)
 
+    # Computed readonly info pulled from the linked employee
+    employee_designation = fields.Char(
+        string="Designation",
+        compute="_compute_employee_info",
+        store=True,
+    )
+    employee_department = fields.Char(
+        string="Department / Team",
+        compute="_compute_employee_info",
+        store=True,
+    )
+
+    @api.depends("employee_id")
+    def _compute_employee_info(self):
+        for rec in self:
+            rec.employee_designation = rec.employee_id.job_id.name or ""
+            rec.employee_department = rec.employee_id.department_id.name or ""
+
+    @api.model
+    def default_get(self, fields_list):
+        """Pre-fill employee from the logged-in user's linked employee record."""
+        res = super().default_get(fields_list)
+        if "employee_id" in fields_list:
+            employee = self.env["hr.employee"].search(
+                [("user_id", "=", self.env.uid)], limit=1
+            )
+            if employee:
+                res["employee_id"] = employee.id
+        return res
+
+    # kept for backward compat / single-type quick entry
     travel_type = fields.Selection([
         ("residential", "Internal Team Travel"),
         ("stakeholder", "Stakeholder/Government"),
         ("local", "Local Travel"),
-    ], required=True)
+    ], string="Primary Travel Type")
 
     from_date = fields.Date()
     to_date = fields.Date()
@@ -25,13 +57,32 @@ class TadaRequest(models.Model):
         "ks.tada.programme",
         string="Programme / Project",
     )
-    # auto-fill purpose from programme when selected
+
     @api.onchange("programme_id")
     def _onchange_programme(self):
         if self.programme_id:
             self.purpose_of_travel = self.programme_id.purpose
             self.project_title = self.programme_id.name
 
+    # ── Multiple travel type lines ──────────────────────────────────────────
+    travel_line_ids = fields.One2many(
+        "ks.tada.travel.line",
+        "request_id",
+        string="Travel Lines",
+    )
+
+    travel_lines_amount = fields.Float(
+        string="Travel Lines Total (NPR)",
+        compute="_compute_travel_lines_amount",
+        store=True,
+    )
+
+    @api.depends("travel_line_ids.line_amount")
+    def _compute_travel_lines_amount(self):
+        for rec in self:
+            rec.travel_lines_amount = sum(rec.travel_line_ids.mapped("line_amount"))
+
+    # ── Traveller groups (rate-rule based) ──────────────────────────────────
     traveller_ids = fields.One2many(
         "ks.tada.traveller",
         "request_id",
@@ -49,7 +100,7 @@ class TadaRequest(models.Model):
     bill_line_ids = fields.One2many(
         "ks.tada.bill",
         "request_id",
-        string="Bills"
+        string="Bills",
     )
 
     itinerary_ids = fields.One2many(
@@ -80,6 +131,17 @@ class TadaRequest(models.Model):
     amount_breakdown = fields.Text(compute="_compute_amount", store=True)
     approval_log = fields.Text(string="Approval Log", readonly=True)
 
+    total_advance = fields.Float(
+        string="Total Advance Requested (NPR)",
+        compute="_compute_total_advance",
+        store=True,
+    )
+
+    @api.depends("advance_ids.advance_amount")
+    def _compute_total_advance(self):
+        for rec in self:
+            rec.total_advance = sum(rec.advance_ids.mapped("advance_amount"))
+
     is_admin = fields.Boolean(
         string="Is Admin",
         compute="_compute_is_admin",
@@ -96,16 +158,11 @@ class TadaRequest(models.Model):
     # -------------------------
     @api.model
     def create(self, vals):
-        # Support both single and bulk create calls. Odoo may call create
-        # with a list of dicts when saving from the web client.
         if isinstance(vals, list):
             for v in vals:
                 if isinstance(v, dict) and v.get("name", "New") == "New":
                     v["name"] = self.env["ir.sequence"].next_by_code("ks.tada.request") or "New"
-                elif isinstance(v, (list, tuple)) and len(v) and isinstance(v[0], dict) and v[0].get("name", "New") == "New":
-                    v[0]["name"] = self.env["ir.sequence"].next_by_code("ks.tada.request") or "New"
             return super().create(vals)
-
         if isinstance(vals, dict) and vals.get("name", "New") == "New":
             vals["name"] = self.env["ir.sequence"].next_by_code("ks.tada.request") or "New"
         return super().create(vals)
@@ -131,97 +188,105 @@ class TadaRequest(models.Model):
         "traveller_ids.subtotal",
         "traveller_ids.rate_rule_id",
         "traveller_ids.count",
+        "travel_line_ids.line_amount",
+        "travel_line_ids.programme_id",
     )
     def _compute_amount(self):
         for rec in self:
-            amount = 0
-            # load settings singleton (if missing, fall back to defaults)
+            amount = 0.0
             settings = self.env["ks.tada.settings"].search([], limit=1)
-
-            # compute travel days (inclusive)
-            days = 1
-            if rec.from_date and rec.to_date:
-                try:
-                    d0 = fields.Date.from_string(rec.from_date)
-                    d1 = fields.Date.from_string(rec.to_date)
-                    delta = (d1 - d0).days
-                    days = max(1, delta + 1)
-                except Exception:
-                    days = 1
-
             breakdown_lines = []
 
-            # Residential Travel: per-day base rate with higher first/last day rates
-            if rec.travel_type == "residential":
-                if settings:
-                    base_day = settings.rate_residential_vehicle if rec.with_vehicle else settings.rate_residential_no_vehicle
-                    fl_rate = settings.rate_first_last_day
-                else:
-                    base_day = 1500.0 if rec.with_vehicle else 2500.0
-                    fl_rate = 2500.0
+            # ── Travel lines (multi-type) ──
+            if rec.travel_line_ids:
+                breakdown_lines.append("Travel Lines:")
+                for tl in rec.travel_line_ids:
+                    ttype = dict(tl._fields["travel_type"].selection).get(tl.travel_type, tl.travel_type)
+                    prog = tl.programme_id.name if tl.programme_id else ""
+                    date_range = ""
+                    if tl.from_date and tl.to_date:
+                        date_range = f" ({tl.from_date.strftime('%d/%m')}–{tl.to_date.strftime('%d/%m')})"
+                    prog_str = f" [{prog}]" if prog else ""
+                    breakdown_lines.append(
+                        f"  {ttype}{date_range}{prog_str} ×{tl.num_people}: NPR {tl.line_amount:.2f}"
+                    )
+                    if tl.breakdown:
+                        breakdown_lines.append(f"    {tl.breakdown}")
+                tl_total = sum(rec.travel_line_ids.mapped("line_amount"))
+                breakdown_lines.append(f"  Travel Lines Total: NPR {tl_total:.2f}")
+                amount += tl_total
 
-                if rec.full_board:
-                    fb_base = settings.rate_full_board_base if settings else 2500.0
-                    fb_percent = settings.full_board_percent if settings else 20.0
-                    amount = fb_base * (fb_percent / 100.0) * days
-                    breakdown_lines.append(f"Full-Board Package ({days} day(s) x {fb_base:.2f} @ {fb_percent:.2f}%): {amount:.2f}")
-                else:
-                    if days == 1:
-                        first_last_days = 1
-                        middle_days = 0
+            # ── Legacy single travel_type (only if no travel lines) ──
+            elif rec.travel_type:
+                days = 1
+                if rec.from_date and rec.to_date:
+                    delta = (rec.to_date - rec.from_date).days
+                    days = max(1, delta + 1)
+
+                if rec.travel_type == "residential":
+                    if settings:
+                        base_day = settings.rate_residential_vehicle if rec.with_vehicle else settings.rate_residential_no_vehicle
+                        fl_rate = settings.rate_first_last_day
                     else:
-                        first_last_days = 2
-                        middle_days = max(0, days - 2)
+                        base_day = 1500.0 if rec.with_vehicle else 2500.0
+                        fl_rate = 2500.0
 
-                    first_last_total = fl_rate * first_last_days
-                    middle_total = base_day * middle_days
-                    breakdown_lines.append(f"First/Last days ({first_last_days} x {fl_rate:.2f}): {first_last_total:.2f}")
-                    if middle_days:
-                        breakdown_lines.append(f"Middle days ({middle_days} x {base_day:.2f}): {middle_total:.2f}")
-                    amount = first_last_total + middle_total
+                    if rec.full_board:
+                        fb_base = settings.rate_full_board_base if settings else 2500.0
+                        fb_percent = settings.full_board_percent if settings else 20.0
+                        amount = fb_base * (fb_percent / 100.0) * days
+                        breakdown_lines.append(
+                            f"Full-Board ({days}d × NPR {fb_base:.2f} @ {fb_percent:.2f}%): NPR {amount:.2f}"
+                        )
+                    else:
+                        fl_days = 1 if days == 1 else 2
+                        mid_days = max(0, days - 2)
+                        fl_total = fl_rate * fl_days
+                        mid_total = base_day * mid_days
+                        breakdown_lines.append(f"First/Last days ({fl_days} × NPR {fl_rate:.2f}): NPR {fl_total:.2f}")
+                        if mid_days:
+                            breakdown_lines.append(f"Middle days ({mid_days} × NPR {base_day:.2f}): NPR {mid_total:.2f}")
+                        amount = fl_total + mid_total
 
-            # Local Travel
-            elif rec.travel_type == "local":
-                if rec.with_vehicle:
-                    rate_km = settings.rate_local_per_km if settings else 20.0
-                    km_total = rec.km_travelled * rate_km
-                    breakdown_lines.append(f"Local travel ({rec.km_travelled} km x {rate_km:.2f}): {km_total:.2f}")
-                    amount = km_total
-                else:
-                    bill_amount = rec.bill_amount or 0.0
-                    breakdown_lines.append(f"Bill amount: {bill_amount:.2f}")
-                    amount = bill_amount
+                elif rec.travel_type == "local":
+                    if rec.with_vehicle:
+                        rate_km = settings.rate_local_per_km if settings else 20.0
+                        amount = rec.km_travelled * rate_km
+                        breakdown_lines.append(f"Local ({rec.km_travelled}km × NPR {rate_km:.2f}): NPR {amount:.2f}")
+                    else:
+                        amount = rec.bill_amount or 0.0
+                        breakdown_lines.append(f"Bill amount: NPR {amount:.2f}")
 
-            # Stakeholder/Gov
-            elif rec.travel_type == "stakeholder":
-                stake_rate = settings.rate_stakeholder if settings else 1600.0
-                amount = stake_rate * days
-                breakdown_lines.append(f"Stakeholder rate ({days} day(s) x {stake_rate:.2f}): {amount:.2f}")
+                elif rec.travel_type == "stakeholder":
+                    rate = settings.rate_stakeholder if settings else 1600.0
+                    amount = rate * days
+                    breakdown_lines.append(f"Stakeholder ({days}d × NPR {rate:.2f}): NPR {amount:.2f}")
 
-            # Traveller groups breakdown
+            # ── Traveller groups (rate-rule based) ──
             if rec.traveller_ids:
-                traveller_total = sum(rec.traveller_ids.mapped("subtotal"))
+                trav_total = sum(rec.traveller_ids.mapped("subtotal"))
                 breakdown_lines.append("─" * 30)
                 breakdown_lines.append("Traveller Groups:")
                 for t in rec.traveller_ids:
-                    cat_label = dict(
-                        t._fields["member_category"].selection
-                    ).get(t.member_category, t.member_category or "")
-                    breakdown_lines.append(
-                        f"  [{cat_label}] {t.rate_rule_id.name} x{t.count} ({t.days}d): NPR {t.subtotal:.2f}"
+                    cat_label = dict(t._fields["member_category"].selection).get(
+                        t.member_category, t.member_category or ""
                     )
-                breakdown_lines.append(f"  Travellers Total: NPR {traveller_total:.2f}")
-                amount += traveller_total
+                    breakdown_lines.append(
+                        f"  [{cat_label}] {t.rate_rule_id.name} ×{t.count} ({t.days}d): NPR {t.subtotal:.2f}"
+                    )
+                breakdown_lines.append(f"  Travellers Total: NPR {trav_total:.2f}")
+                amount += trav_total
 
-            # Bill attachments detail
+            # ── Bill attachments ──
             if rec.bill_line_ids:
                 breakdown_lines.append("─" * 30)
                 breakdown_lines.append("Bill Attachments:")
                 for line in rec.bill_line_ids:
-                    breakdown_lines.append(f"  {line.bill_attachment_name or 'Unnamed'}: NPR {line.bill_amount:.2f}")
+                    breakdown_lines.append(
+                        f"  {line.bill_attachment_name or 'Unnamed'}: NPR {line.bill_amount:.2f}"
+                    )
                 breakdown_lines.append(f"  Bills Total: NPR {rec.bill_amount:.2f}")
 
-            # Build breakdown text and final amount
             breakdown_lines.append("─" * 30)
             breakdown_lines.append(f"Total Applied Amount: NPR {amount:.2f}")
             rec.amount = amount
@@ -237,7 +302,9 @@ class TadaRequest(models.Model):
     def _append_approval_log(self, message):
         for rec in self:
             current_log = rec.approval_log or ""
-            rec.approval_log = f"{current_log}{message} by {self.env.user.name} on {fields.Datetime.now()}\n"
+            rec.approval_log = (
+                f"{current_log}{message} by {self.env.user.name} on {fields.Datetime.now()}\n"
+            )
 
     def action_submit(self):
         for rec in self:
@@ -263,8 +330,8 @@ class TadaRequest(models.Model):
     def action_reject(self):
         self._require_admin()
         for rec in self:
-            if rec.state != "submitted":
-                raise ValidationError("Only submitted requests can be rejected.")
+            if rec.state not in ("submitted", "approved"):
+                raise ValidationError("Only submitted or approved requests can be rejected.")
             rec.state = "rejected"
             rec._append_approval_log("Rejected")
 
@@ -274,6 +341,13 @@ class TadaRequest(models.Model):
 
     def action_print_taf(self):
         self.ensure_one()
-        return self.env.ref(
-            "ks_tada_management.action_report_tada_request"
-        ).report_action(self)
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Print TADA",
+            "res_model": "ks.tada.print.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_request_id": self.id,
+            },
+        }

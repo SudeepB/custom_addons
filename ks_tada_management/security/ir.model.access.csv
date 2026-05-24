@@ -7,3 +7,5 @@ access_ks_tada_advance,ks.tada.advance,model_ks_tada_advance,,1,1,1,1
 access_ks_tada_rate_rule,ks.tada.rate.rule,model_ks_tada_rate_rule,,1,1,1,1
 access_ks_tada_programme,ks.tada.programme,model_ks_tada_programme,,1,1,1,1
 access_ks_tada_traveller,ks.tada.traveller,model_ks_tada_traveller,,1,1,1,1
+access_ks_tada_travel_line,ks.tada.travel.line,model_ks_tada_travel_line,,1,1,1,1
+access_ks_tada_print_wizard,ks.tada.print.wizard,model_ks_tada_print_wizard,,1,1,1,1

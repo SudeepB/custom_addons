@@ -6,3 +6,5 @@ from . import tada_advance
 from . import tada_rate_rule
 from . import tada_programme
 from . import tada_traveller
+from . import tada_travel_line
+from . import tada_print_wizard
